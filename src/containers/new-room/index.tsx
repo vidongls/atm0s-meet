@@ -4,6 +4,13 @@ import { generateToken } from '@/app/actions/token'
 import { Logo } from '@/components'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -13,10 +20,14 @@ import { generateRandomString } from '@/lib'
 import { isCreateNewRoomState } from '@/recoils'
 import { useUser } from '@clerk/nextjs'
 import { map } from 'lodash'
+import { Copy, CopyCheck, Link, Loader, Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { SubmitHandler, useForm } from 'react-hook-form'
 import { useSetRecoilState } from 'recoil'
+
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useCopyToClipboard } from 'usehooks-ts'
 
 type Inputs = {
   room: string
@@ -35,6 +46,10 @@ export const NewRoom: React.FC<Props> = () => {
   const [gatewayIndex, setGatewayIndex] = useState('0')
   const [isLoadingJoin, setIsLoadingJoin] = useState(false)
   const [isLoadingCreate, setIsLoadingCreate] = useState(false)
+  const [isMeetRoom, setIsMeetRoom] = useState(false)
+  const [isCopy, setIsCopy] = useState(false)
+  const [, onCopy] = useCopyToClipboard()
+  const [roomSave, setRoomSave] = useState('')
   const setIsCreateNewRoom = useSetRecoilState(isCreateNewRoomState)
 
   const gateways = env.GATEWAYS
@@ -56,6 +71,23 @@ export const NewRoom: React.FC<Props> = () => {
     await onGenerateToken(data.room)
     setIsLoadingCreate(false)
   }
+  const onCreateMeetRoom: SubmitHandler<Inputs> = async (data) => {
+    setIsMeetRoom(true)
+    setIsLoadingCreate(true)
+    await generateToken(data.room, user?.id as string)
+    setRoomSave(data.room)
+    setIsLoadingCreate(false)
+  }
+
+  const copyToClipboardMeetingLink = async (value: string) => {
+    setIsCopy(true)
+    await onCopy(value as string)
+    setTimeout(() => {
+      setIsCopy(false)
+    }, 2000)
+  }
+
+  const meetingLink = useMemo(() => `${window?.origin}/invite/${roomSave}`, [roomSave])
 
   return (
     <Layout>
@@ -83,7 +115,7 @@ export const NewRoom: React.FC<Props> = () => {
                   </SelectGroup>
                 </SelectContent>
               </Select>
-              <Button
+              {/* <Button
                 loading={isLoadingCreate}
                 type="button"
                 className="w-full"
@@ -95,7 +127,75 @@ export const NewRoom: React.FC<Props> = () => {
                 }
               >
                 Create new room
-              </Button>
+              </Button> */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="destructive" type="button" className="w-full">
+                    Create new room
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-72">
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={() =>
+                        onCreateMeetRoom({
+                          room: generateRandomString(8),
+                        })
+                      }
+                    >
+                      <Link />
+                      Create a meeting for later use
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={() =>
+                        onCreate({
+                          room: generateRandomString(8),
+                        })
+                      }
+                    >
+                      <Button
+                        loading={isLoadingCreate}
+                        type="button"
+                        className="h-full w-full justify-start p-0 font-normal"
+                        variant="ghost"
+                      >
+                        <Plus />
+                        Start an instant meeting
+                      </Button>
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Dialog open={isMeetRoom}>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Here is information on how to participate.</DialogTitle>
+                    <DialogDescription>
+                      Send this link to the people you want to meet with. Save the link for later use.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    {isLoadingCreate && <Loader />}
+
+                    {!isLoadingCreate && (
+                      <div className="flex h-10 items-center gap-2 rounded bg-zinc-200 pl-3">
+                        <div className="flex-1 text-sm">{meetingLink}</div>
+                        <Button variant="link" size="icon" onClick={() => copyToClipboardMeetingLink(meetingLink)}>
+                          {isCopy ? <CopyCheck size={16} className="text-green-500" /> : <Copy size={16} />}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" variant={'outline'} onClick={() => setIsMeetRoom(false)}>
+                      Close
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex-1 border-t" />
                 <div className="text-sm">Or join a room</div>
