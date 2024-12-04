@@ -55,6 +55,7 @@
     "generate-api-key": "^1.0.2",
     "input-otp": "^1.4.1",
     "jose": "^5.9.3",
+    "jotai": "^2.10.3",
     "js-cookie": "^3.0.5",
     "localforage": "^1.10.0",
     "lodash": "^4.17.21",

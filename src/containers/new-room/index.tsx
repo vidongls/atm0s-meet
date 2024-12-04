@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { env } from '@/config'
 import { Layout } from '@/layouts'
 import { generateRandomString } from '@/lib'
-import { isCreateNewRoomState } from '@/recoils'
+import { isCreateNewRoomState } from '@/stores'
 import { useUser } from '@clerk/nextjs'
 import { map } from 'lodash'
 import { Copy, CopyCheck, Link, Loader, Plus } from 'lucide-react'
@@ -27,8 +27,9 @@ import { SubmitHandler, useForm } from 'react-hook-form'
 import { useSetRecoilState } from 'recoil'
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import RoomManager from '@/lib/room'
+import { RoomStore } from '@/stores/room'
 import { DialogTrigger } from '@radix-ui/react-dialog'
+import { useSetAtom } from 'jotai'
 import { useCopyToClipboard } from 'usehooks-ts'
 
 type Inputs = {
@@ -53,6 +54,8 @@ export const NewRoom: React.FC<Props> = () => {
   const [roomSave, setRoomSave] = useState('')
   const setIsCreateNewRoom = useSetRecoilState(isCreateNewRoomState)
 
+  const onCreateRoomUseLater = useSetAtom(RoomStore.createRoomUseLater)
+
   const gateways = env.GATEWAYS
 
   const onGenerateToken = async (room: string) => {
@@ -74,7 +77,11 @@ export const NewRoom: React.FC<Props> = () => {
   }
 
   const onCreateMeetRoom: SubmitHandler<Inputs> = async (data) => {
-    RoomManager.createRoom(data.room, 'RoomFake.' + data.room)
+    onCreateRoomUseLater({
+      code: data.room,
+      name: 'RoomFake.' + data.room,
+      users: [],
+    })
     setIsLoadingCreate(true)
     await generateToken(data.room, user?.id as string)
     setRoomSave(data.room)
@@ -89,7 +96,7 @@ export const NewRoom: React.FC<Props> = () => {
     }, 2000)
   }
 
-  const meetingLink = useMemo(() => `${window?.origin}/invite/${roomSave}`, [roomSave])
+  const meetingLink = useMemo(() => `${window?.origin}/${roomSave}`, [roomSave])
 
   return (
     <Layout>

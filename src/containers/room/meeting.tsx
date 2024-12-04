@@ -2,10 +2,13 @@
 
 import { AudioMixerPlayer, PeerLocal, PeerRemote } from '@/components'
 import { useDeviceStream } from '@/hooks'
+import { RoomStore } from '@/stores/room'
 import { useRemotePeers, useRoom } from '@atm0s-media-sdk/react-hooks'
+import { useUser } from '@clerk/nextjs'
+import { useSetAtom } from 'jotai'
 import { filter, find, map } from 'lodash'
 import { useParams } from 'next/navigation'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { BottomBar, GridViewLayout, SidebarViewLayout } from './components'
 
 type Props = {
@@ -16,6 +19,9 @@ export const Meeting: React.FC<Props> = ({ host }) => {
   const params = useParams()
   const room = useRoom()
   const remotePeers = useRemotePeers()
+  const { user } = useUser()
+  const addListUserToRoom = useSetAtom(RoomStore.addListUserToRoom)
+
   const streamVideoScreen = useDeviceStream('video_screen')
   const meetingLink = `${host}/invite/${params?.room}`
 
@@ -41,6 +47,20 @@ export const Meeting: React.FC<Props> = ({ host }) => {
 
     return mapRemotePeers
   }, [peerLocal, remotePeers, room?.peer, videoScreen])
+
+  useEffect(() => {
+    addListUserToRoom({
+      users: [
+        {
+          gmail: user?.emailAddresses?.[0]?.emailAddress as string,
+          name: user?.fullName ?? '',
+          avatar: user?.imageUrl as string,
+        },
+        ...map(remotePeers, (item) => ({ gmail: item.peer, name: item.peer, avatar: '' })),
+      ],
+      roomCode: (params?.room ?? '') as string,
+    })
+  }, [addListUserToRoom, params?.room, remotePeers, user])
 
   return (
     <div className="flex h-full w-full items-center justify-center">
